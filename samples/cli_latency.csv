@@ -1,0 +1,2 @@
+timestamp,model,wav_duration_s,segment_count,stt_elapsed_s,cli_elapsed_s,cli_success
+2026-04-22T22:42:58,small,180.00,12,23.74,9.20,True

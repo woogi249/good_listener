@@ -1,0 +1,1 @@
+이 회의는 AI 제품, 모델, 코딩 에이전트, LLM 도구 논의입니다. 주요 용어: OpenAI, ChatGPT, GPT-5.5, GPT-5, GPT-4.1, Codex, Claude, Claude Code, Sonnet, Opus, Anthropic, Gemini, DeepMind, Google, Microsoft, Copilot, Cursor, OpenCode, VS Code, API, CLI, MCP, agent, AI agent, LLM, prompt, context, token, benchmark, model, inference, latency.

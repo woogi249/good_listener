@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Realtime Panel</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <strong>Realtime Panel</strong>
+        <span id="connection">연결 대기</span>
+      </div>
+      <div class="controls">
+        <button id="startBtn" type="button">시작</button>
+        <button id="stopBtn" type="button">종료</button>
+        <button id="micBtn" type="button">마이크</button>
+        <button id="sampleBtn" type="button">샘플</button>
+        <button id="resetBtn" type="button">초기화</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="panel-grid" aria-label="실시간 회의 패널">
+        <article class="panel panel-summary" id="panel-summarizer" data-importance="1">
+          <div class="panel-head">
+            <div>
+              <span class="panel-key">A</span>
+              <h2>요약</h2>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-panel-toggle="summarizer" checked />
+              <span>ON</span>
+            </label>
+          </div>
+          <p class="panel-text">요약 대기</p>
+          <div class="panel-meta">
+            <span data-role="reason">최근 흐름</span>
+            <span data-role="provider"></span>
+          </div>
+        </article>
+
+        <article class="panel panel-fact" id="panel-fact_checker" data-importance="1">
+          <div class="panel-head">
+            <div>
+              <span class="panel-key">B</span>
+              <h2>팩트체크</h2>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-panel-toggle="fact_checker" checked />
+              <span>ON</span>
+            </label>
+          </div>
+          <p class="panel-text">검증 주장 대기</p>
+          <div class="panel-meta">
+            <span data-role="reason">수치·고유명사</span>
+            <span data-role="provider"></span>
+          </div>
+        </article>
+
+        <article class="panel panel-devil" id="panel-devils_advocate" data-importance="1">
+          <div class="panel-head">
+            <div>
+              <span class="panel-key">D</span>
+              <h2>반박</h2>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-panel-toggle="devils_advocate" checked />
+              <span>ON</span>
+            </label>
+          </div>
+          <p class="panel-text">반박 대기</p>
+          <div class="panel-meta">
+            <span data-role="reason">합의 리스크</span>
+            <span data-role="provider"></span>
+          </div>
+        </article>
+
+        <article class="panel panel-idea" id="panel-ideator" data-importance="1">
+          <div class="panel-head">
+            <div>
+              <span class="panel-key">C</span>
+              <h2>아이디어</h2>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-panel-toggle="ideator" checked />
+              <span>ON</span>
+            </label>
+          </div>
+          <p class="panel-text">아이디어 대기</p>
+          <div class="panel-meta">
+            <span data-role="reason">교착·반복</span>
+            <span data-role="provider"></span>
+          </div>
+        </article>
+      </section>
+
+      <aside class="side-rail" aria-label="회의 입력과 발화 로그">
+        <form id="prepForm" class="prep-form">
+          <label>
+            <span>주제</span>
+            <input id="prepTopic" type="text" placeholder="예: AI 모델 업데이트 기획" />
+          </label>
+          <label>
+            <span>목표</span>
+            <input id="prepGoal" type="text" placeholder="예: 확인할 이슈와 아이템 정리" />
+          </label>
+          <label>
+            <span>용어</span>
+            <textarea id="prepTerms" rows="3" placeholder="Codex 5.5, Claude Opus 4.7, OpenAI, Spark"></textarea>
+          </label>
+          <button type="submit">준비</button>
+        </form>
+        <div class="context-pill" id="contextPill">준비 문맥 없음</div>
+        <form id="utteranceForm" class="utterance-form">
+          <textarea id="utteranceInput" rows="4" placeholder="발화를 입력"></textarea>
+          <button type="submit">보내기</button>
+        </form>
+        <div class="status-line" id="statusLine">대기 중</div>
+        <ol class="transcript" id="transcript"></ol>
+      </aside>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+[project]
+name = "realtime-panel"
+version = "0.0.1"
+description = "한국어 회의 실시간 4패널 코파일럿 (MVP)"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111",
+    "uvicorn>=0.29",
+    "faster-whisper>=1.2",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    "sounddevice>=0.5",
+]
+
+[project.scripts]
+panel-runner = "panel.runner:main"
+panel-realtime = "panel.realtime_app:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["panel"]
+
+[tool.setuptools.package-data]
+panel = ["static/*"]

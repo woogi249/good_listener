@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local agent/session state
+.omc/
+**/.omc/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+id_rsa*
+id_ed25519*
+
+# Local recordings and large audio samples
+*.wav
+*.mp3
+*.m4a
+*.flac
+
+# Runtime/build output
+dist/
+build/
+coverage/
+logs/
+*.log
