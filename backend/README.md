@@ -1,10 +1,11 @@
 # Backend MVP
 
-실시간 4패널 UI와 터미널/WAV 파이프라인을 제공한다. AI 분석은 `claude` CLI를 기본으로 호출하고, 실패 시 `codex exec`로 fallback한다. 두 CLI는 host에 설치·인증되어 있어야 함. 실시간 마이크 STT는 기본적으로 AI 도메인 용어집(`--domain-profile ai`)을 사용한다.
+실시간 4패널 UI와 터미널/WAV 파이프라인을 제공한다. 실시간 앱의 AI 분석은 EXAONE API를 기본으로 호출한다. CLI 모드에서는 `claude` CLI를 사용하고 실패 시 `codex exec`로 fallback한다. 실시간 마이크 STT는 기본적으로 AI 도메인 용어집(`--domain-profile ai`)을 사용한다.
 
 ## 사전 요건
 - Python 3.10+
-- `claude` CLI 설치 + Pro/Max 구독 인증 완료 (`claude --version`으로 확인)
+- 실시간 앱: `EXAONE_API_KEY` 또는 기존 `FRIENDLI_API_KEY`
+- CLI 모드: `claude` CLI 설치 + Pro/Max 구독 인증 완료 (`claude --version`으로 확인)
 
 ## 실행
 
@@ -15,6 +16,7 @@ python -m panel.realtime_app
 ```
 
 브라우저: `http://127.0.0.1:8765`
+분석 provider 기본값은 EXAONE API다. CLI 분석이 필요하면 `--provider cli`를 지정한다.
 오른쪽 준비 폼에 주제, 목표, 고유명사를 입력하고 `준비`를 누르면 해당 문맥이 세션 전용 STT 힌트와 패널 프롬프트에 반영된다.
 
 기본값은 AI 회의용 용어집이다. 끄려면:
@@ -75,6 +77,7 @@ Windows에서는 `PYTHONIOENCODING=utf-8 PYTHONUTF8=1` 환경변수 필요.
 | `panel/triggers.py` | 발화 카운터 + 쿨다운 평가 |
 | `panel/realtime_app.py` | FastAPI/WebSocket 서버 + 샘플/마이크 입력 |
 | `panel/session.py` | 회의 세션 상태, 패널 실행, 중요도 반영 |
+| `panel/exaone_dispatcher.py` | EXAONE API 분석 호출 + 웹 팩트체크 + UI Director |
 | `panel/config.py` | 4패널 트리거 파라미터 |
 | `panel/vocabulary.py` | AI 도메인 STT 용어 힌트 + alias 후처리 |
 | `panel/prompts.py` | `prompts/*.md` 로더 + `{transcript}` 주입 |

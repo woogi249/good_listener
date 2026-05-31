@@ -3,100 +3,123 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Realtime Panel</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <title>good-listener</title>
+    <link rel="stylesheet" href="/static/styles.css?v=demo14" />
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
-        <strong>Realtime Panel</strong>
+        <strong>good-listener</strong>
         <span id="connection">연결 대기</span>
       </div>
       <div class="controls">
         <button id="startBtn" type="button">시작</button>
         <button id="stopBtn" type="button">종료</button>
+        <button id="demoBtn" type="button">데모</button>
+        <button id="pauseDemoBtn" type="button">일시정지</button>
+        <button id="resumeDemoBtn" type="button">재개</button>
+        <button id="stopDemoBtn" type="button">데모 중지</button>
+        <select id="demoMode" aria-label="데모 분석 모드">
+          <option value="fixture">고정 응답</option>
+          <option value="exaone">실제 EXAONE API</option>
+          <option value="cli">실제 CLI</option>
+        </select>
+        <select id="analysisProvider" aria-label="실제 분석 provider">
+          <option value="exaone">분석: EXAONE API</option>
+          <option value="cli">분석: CLI</option>
+        </select>
         <button id="micBtn" type="button">마이크</button>
         <button id="sampleBtn" type="button">샘플</button>
         <button id="resetBtn" type="button">초기화</button>
       </div>
     </header>
 
-    <main class="workspace">
-      <section class="panel-grid" aria-label="실시간 회의 패널">
-        <article class="panel panel-summary" id="panel-summarizer" data-importance="1">
-          <div class="panel-head">
-            <div>
-              <span class="panel-key">A</span>
-              <h2>요약</h2>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" data-panel-toggle="summarizer" checked />
-              <span>ON</span>
-            </label>
+    <main class="workspace" aria-label="실시간 회의 패널">
+      <article class="panel panel-summary primary-panel" id="panel-summarizer" data-importance="1">
+        <div class="panel-head">
+          <div>
+            <span class="panel-key">A</span>
+            <h2>요약</h2>
           </div>
-          <p class="panel-text">요약 대기</p>
-          <div class="panel-meta">
-            <span data-role="reason">최근 흐름</span>
-            <span data-role="provider"></span>
-          </div>
-        </article>
+          <label class="toggle">
+            <input type="checkbox" data-panel-toggle="summarizer" checked />
+            <span>ON</span>
+          </label>
+        </div>
+        <p class="panel-text">요약 대기</p>
+        <ol class="panel-sources" data-role="sources"></ol>
+        <div class="panel-meta">
+          <span data-role="reason">최근 흐름</span>
+          <span data-role="provider"></span>
+        </div>
+      </article>
 
-        <article class="panel panel-fact" id="panel-fact_checker" data-importance="1">
-          <div class="panel-head">
-            <div>
-              <span class="panel-key">B</span>
-              <h2>팩트체크</h2>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" data-panel-toggle="fact_checker" checked />
-              <span>ON</span>
-            </label>
+      <article class="panel panel-fact primary-panel" id="panel-fact_checker" data-importance="1">
+        <div class="panel-head">
+          <div>
+            <span class="panel-key">B</span>
+            <h2>팩트체크</h2>
           </div>
-          <p class="panel-text">검증 주장 대기</p>
-          <div class="panel-meta">
-            <span data-role="reason">수치·고유명사</span>
-            <span data-role="provider"></span>
-          </div>
-        </article>
+          <label class="toggle">
+            <input type="checkbox" data-panel-toggle="fact_checker" checked />
+            <span>ON</span>
+          </label>
+        </div>
+        <p class="panel-text">검증 주장 대기</p>
+        <ol class="panel-sources" data-role="sources"></ol>
+        <div class="panel-meta">
+          <span data-role="reason">수치·고유명사</span>
+          <span data-role="provider"></span>
+        </div>
+      </article>
 
-        <article class="panel panel-devil" id="panel-devils_advocate" data-importance="1">
-          <div class="panel-head">
-            <div>
-              <span class="panel-key">D</span>
-              <h2>반박</h2>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" data-panel-toggle="devils_advocate" checked />
-              <span>ON</span>
+      <section class="timeline-panel" aria-label="인사이트 타임라인">
+        <div class="timeline-head">
+          <div>
+            <span class="panel-key">C+</span>
+            <h2>인사이트 타임라인</h2>
+          </div>
+          <div class="timeline-tools">
+            <label class="feed-toggle arbiter-toggle">
+              <input type="checkbox" id="layoutArbiterToggle" checked />
+              <span>위험 강조</span>
             </label>
+            <span class="status-line" id="statusLine">대기 중</span>
           </div>
-          <p class="panel-text">반박 대기</p>
-          <div class="panel-meta">
-            <span data-role="reason">합의 리스크</span>
-            <span data-role="provider"></span>
-          </div>
-        </article>
-
-        <article class="panel panel-idea" id="panel-ideator" data-importance="1">
-          <div class="panel-head">
-            <div>
-              <span class="panel-key">C</span>
-              <h2>아이디어</h2>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" data-panel-toggle="ideator" checked />
-              <span>ON</span>
-            </label>
-          </div>
-          <p class="panel-text">아이디어 대기</p>
-          <div class="panel-meta">
-            <span data-role="reason">교착·반복</span>
-            <span data-role="provider"></span>
-          </div>
-        </article>
+        </div>
+        <div class="feed-toggles" aria-label="타임라인 패널 토글">
+          <label class="feed-toggle feed-ideator">
+            <input type="checkbox" data-panel-toggle="ideator" checked />
+            <span>C 아이디어</span>
+          </label>
+          <label class="feed-toggle feed-devils_advocate">
+            <input type="checkbox" data-panel-toggle="devils_advocate" checked />
+            <span>D 반박</span>
+          </label>
+          <label class="feed-toggle feed-parking_lot">
+            <input type="checkbox" data-panel-toggle="parking_lot" checked />
+            <span>E 미해결</span>
+          </label>
+          <label class="feed-toggle feed-action_candidate">
+            <input type="checkbox" data-panel-toggle="action_candidate" checked />
+            <span>TODO</span>
+          </label>
+          <label class="feed-toggle feed-customer_perspective">
+            <input type="checkbox" data-panel-toggle="customer_perspective" checked />
+            <span>고객관점</span>
+          </label>
+        </div>
+        <div class="insight-feed-viewport" id="insightFeedViewport">
+          <ol class="insight-feed" id="insightFeed">
+            <li class="feed-empty">인사이트 대기</li>
+          </ol>
+        </div>
       </section>
+    </main>
 
-      <aside class="side-rail" aria-label="회의 입력과 발화 로그">
+    <details class="operator-dock">
+      <summary>입력 · 로그</summary>
+      <div class="dock-content">
         <form id="prepForm" class="prep-form">
           <label>
             <span>주제</span>
@@ -117,11 +140,23 @@
           <textarea id="utteranceInput" rows="4" placeholder="발화를 입력"></textarea>
           <button type="submit">보내기</button>
         </form>
-        <div class="status-line" id="statusLine">대기 중</div>
         <ol class="transcript" id="transcript"></ol>
-      </aside>
-    </main>
+      </div>
+    </details>
 
-    <script src="/static/app.js"></script>
+    <aside class="conversation-popover" id="conversationPopup" data-active="false" aria-live="polite">
+      <p id="conversationText"></p>
+    </aside>
+
+    <aside class="feed-detail" id="feedDetail" data-active="false" aria-hidden="true" aria-live="polite" aria-label="인사이트 상세">
+      <button class="feed-detail-close" id="feedDetailClose" type="button" aria-label="상세 닫기">×</button>
+      <div class="feed-detail-kicker" id="feedDetailKicker"></div>
+      <h3 id="feedDetailTitle"></h3>
+      <p id="feedDetailBody"></p>
+      <ul id="feedDetailPoints"></ul>
+      <div class="feed-detail-action" id="feedDetailAction"></div>
+    </aside>
+
+    <script src="/static/app.js?v=demo14"></script>
   </body>
 </html>

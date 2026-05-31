@@ -23,6 +23,7 @@ class ClaudeResponse:
     error: str | None = None
     provider: str = "claude"
     fallback_from: str | None = None
+    sources: list[dict] | None = None
 
 
 def _resolve_command(name: str) -> str:

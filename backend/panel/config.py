@@ -12,6 +12,7 @@ class TriggerConfig:
     cooldown_s: float
     priority: str              # "HIGH" | "MED" | "LOW"
     enabled: bool
+    surface: str = "feed"      # "panel" | "feed"
 
 
 SUMMARIZER = TriggerConfig(
@@ -21,6 +22,7 @@ SUMMARIZER = TriggerConfig(
     cooldown_s=60.0,
     priority="HIGH",
     enabled=True,
+    surface="panel",
 )
 
 FACT_CHECKER = TriggerConfig(
@@ -30,24 +32,57 @@ FACT_CHECKER = TriggerConfig(
     cooldown_s=30.0,
     priority="HIGH",
     enabled=True,
+    surface="panel",
 )
 
 IDEATOR = TriggerConfig(
     panel_name="ideator",
     title="C 아이디어",
     utterance_threshold=0,
-    cooldown_s=120.0,
+    cooldown_s=45.0,
     priority="LOW",
     enabled=True,
+    surface="feed",
 )
 
 DEVILS_ADVOCATE = TriggerConfig(
     panel_name="devils_advocate",
     title="D 반박",
     utterance_threshold=0,
-    cooldown_s=90.0,
+    cooldown_s=45.0,
     priority="MED",
     enabled=True,
+    surface="feed",
+)
+
+PARKING_LOT = TriggerConfig(
+    panel_name="parking_lot",
+    title="E 미해결",
+    utterance_threshold=0,
+    cooldown_s=20.0,
+    priority="MED",
+    enabled=True,
+    surface="feed",
+)
+
+ACTION_CANDIDATE = TriggerConfig(
+    panel_name="action_candidate",
+    title="TODO 액션 후보",
+    utterance_threshold=0,
+    cooldown_s=20.0,
+    priority="HIGH",
+    enabled=True,
+    surface="feed",
+)
+
+CUSTOMER_PERSPECTIVE = TriggerConfig(
+    panel_name="customer_perspective",
+    title="고객관점",
+    utterance_threshold=0,
+    cooldown_s=30.0,
+    priority="LOW",
+    enabled=True,
+    surface="feed",
 )
 
 REALTIME_PANELS = (
@@ -55,6 +90,22 @@ REALTIME_PANELS = (
     FACT_CHECKER,
     IDEATOR,
     DEVILS_ADVOCATE,
+    PARKING_LOT,
+    ACTION_CANDIDATE,
+    CUSTOMER_PERSPECTIVE,
+)
+
+PRIMARY_PANELS = (
+    SUMMARIZER,
+    FACT_CHECKER,
+)
+
+FEED_PANELS = (
+    IDEATOR,
+    DEVILS_ADVOCATE,
+    PARKING_LOT,
+    ACTION_CANDIDATE,
+    CUSTOMER_PERSPECTIVE,
 )
 
 

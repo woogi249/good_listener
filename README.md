@@ -6,13 +6,13 @@
 - ✅ 요구사항 스펙 (`.omc/specs/deep-interview-spec-tightening.md`)
 - ✅ 설계 결정문 9건 + 일관성 매트릭스 (`docs/decisions/`)
 - ✅ **Realtime 4-panel MVP** — WebSocket UI, A/B/C/D 패널 트리거, 중요도 기반 글자 크기
-- ✅ `claude` CLI 연결, 실패 시 `codex exec` fallback
+- ✅ EXAONE API 기본 분석, CLI 경로는 선택 실행 지원
 - ✅ WAV 배치 STT + 선택적 마이크 청크 STT + AI 도메인 용어집
 - ⏳ 다음: Action Item/Decision Log 사후 리포트 → 동의/로컬 전용 모드 → 패키징
 
 ## 빠른 시작
 
-사전 요건: Python 3.10+, `claude` CLI (Pro/Max 구독 인증 완료)
+사전 요건: Python 3.10+, `EXAONE_API_KEY` 또는 기존 `FRIENDLI_API_KEY`
 
 ### 실시간 4패널 앱
 ```bash
@@ -21,6 +21,7 @@ python -m panel.realtime_app
 ```
 
 브라우저에서 `http://127.0.0.1:8765` 접속.
+분석 provider 기본값은 EXAONE API입니다. `--provider cli`를 지정하면 CLI 분석 경로를 사용할 수 있습니다.
 기본값은 `--domain-profile ai`라서 Codex, Claude, Opus, OpenAI 같은 AI 고유명사 힌트와 후처리 보정이 적용됩니다.
 회의 시작 전 오른쪽 준비 폼에 주제, 목표, 고유명사를 넣으면 세션 전용 STT 힌트와 패널 프롬프트 문맥으로 같이 반영됩니다.
 
@@ -49,6 +50,7 @@ realtime-panel/
 │   ├── panel/
 │   │   ├── realtime_app.py      # FastAPI/WebSocket 4패널 앱
 │   │   ├── session.py           # 회의 세션 + 패널 실행
+│   │   ├── exaone_dispatcher.py # EXAONE API 분석 호출
 │   │   ├── cli_dispatcher.py    # claude CLI + codex fallback (stdin pipe)
 │   │   ├── rolling_buffer.py    # 10발화 버퍼
 │   │   ├── triggers.py          # 4패널 트리거 평가
@@ -73,14 +75,15 @@ realtime-panel/
 ## 배포 계획
 
 - **Host**: 사용자 로컬 PC
-- **CLI 호출**: host의 `claude` (Pro/Max 구독 세션 재사용)
+- **기본 분석 호출**: EXAONE API
+- **선택 CLI 호출**: host의 `claude` (Pro/Max 구독 세션 재사용)
 - **공개 엔드포인트**: 선택 사항. 필요 시 Cloudflare Tunnel 등으로 별도 구성
 - **Docker**: 필수 아님. MVP는 host Python 직접 실행.
 
 상세 결정은 `docs/decisions/DR-00a~06.md` 및 `CONSISTENCY.md` 참조.
 
 ## 개발 원칙 (CLAUDE.md 발췌)
-- Claude API 직접 호출 금지 → `claude` CLI subprocess만
+- 기본 분석은 EXAONE API, CLI 모드는 `claude` subprocess 사용
 - 유료 STT 금지 → 로컬 Whisper 우선
 - 실시간 패널 출력: 1줄/50자 엄수
 - 롤링 버퍼로 프롬프트 토큰 최소화 (직전 10~20 발화)

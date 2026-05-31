@@ -7,9 +7,12 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from .config import (
+    ACTION_CANDIDATE,
+    CUSTOMER_PERSPECTIVE,
     DEVILS_ADVOCATE,
     FACT_CHECKER,
     IDEATOR,
+    PARKING_LOT,
     REALTIME_PANELS,
     SUMMARIZER,
     TriggerConfig,
@@ -47,13 +50,21 @@ class TriggerState:
         self.counter = 0
 
 
-@dataclass(frozen=True)
+@dataclass
 class TriggerEvent:
     panel_name: str
     reason: str
     importance: int
     priority: str
     utterance: str
+    focus_keyword: str = "최근 발화"
+    output_id: str | None = None
+    fixture_text: str | None = None
+    fixture_delay_s: float | None = None
+    fixture_detail_title: str = ""
+    fixture_detail_body: str = ""
+    fixture_detail_points: list[str] = field(default_factory=list)
+    fixture_detail_action: str = ""
 
 
 _NUMBER_PATTERN = re.compile(
@@ -102,7 +113,51 @@ _STUCK_KEYWORDS = (
     "아이디어",
     "방법",
     "어떻게",
+    "어떨",
+    "까요",
     "논의",
+)
+_OPEN_QUESTION_KEYWORDS = (
+    "확인 필요",
+    "확인해야",
+    "나중에",
+    "추후",
+    "모르겠",
+    "불확실",
+    "질문",
+    "누가 확인",
+    "검토 필요",
+    "?",
+)
+_ACTION_KEYWORDS = (
+    "담당",
+    "까지",
+    "요청",
+    "정리",
+    "공유",
+    "작성",
+    "준비",
+    "올리",
+    "확인하겠습니다",
+    "확인해볼게요",
+    "하겠습니다",
+    "다음 주",
+    "오늘 중",
+    "내일",
+)
+_CUSTOMER_KEYWORDS = (
+    "고객",
+    "사용자",
+    "유저",
+    "불편",
+    "니즈",
+    "가치",
+    "도입",
+    "전환",
+    "가입",
+    "이탈",
+    "피드백",
+    "사용성",
 )
 _URGENT_KEYWORDS = (
     "마감",
@@ -119,6 +174,50 @@ _URGENT_KEYWORDS = (
     "고객",
 )
 _TOKEN_PATTERN = re.compile(r"[A-Za-z0-9가-힣]{2,}")
+_MODEL_PATTERN = re.compile(
+    r"\b(Claude\s+Opus\s+\d+(?:\.\d+)?|Opus\s+\d+(?:\.\d+)?|GPT-\d+(?:\.\d+)?|Codex|Claude|ChatGPT|STT|PoC|MVP|CLI|API|CAC|WER|RTF)\b",
+    re.IGNORECASE,
+)
+_NUMBER_CONTEXT_PATTERN = re.compile(
+    r"\d[\d,.]*\s*(?:%|퍼센트|원|만원|억원|달러|명|건|초|분|시간|일|월|년|GB|MB|ms|s)\s*[A-Za-z0-9가-힣]{0,8}"
+)
+_FOCUS_PHRASES = (
+    "Claude Opus 4.8",
+    "Opus 4.8",
+    "제조 PoC",
+    "30분 회의",
+    "고객 인터뷰",
+    "현장 용어",
+    "평가 지표",
+    "정책 문서",
+    "반복 코드",
+    "신규 산업",
+    "개인정보",
+    "벤치마크",
+    "제조 현장",
+    "회의록",
+    "법무",
+    "의료",
+    "Codex",
+    "Opus",
+)
+_FOCUS_STOPWORDS = {
+    "오늘은",
+    "최근",
+    "제가",
+    "우리",
+    "그럼",
+    "좋습니다",
+    "다만",
+    "반면",
+    "회의",
+    "모델",
+    "사용자",
+    "고객",
+    "정도",
+    "부분",
+    "기준",
+}
 
 
 def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
@@ -141,6 +240,58 @@ def _keywords_from_buffer(buffer: RollingBuffer, limit: int = 8) -> Counter[str]
         tokens.extend(_TOKEN_PATTERN.findall(utterance.text))
     stopwords = {"그리고", "그래서", "이번", "오늘", "우리", "그럼", "이제", "있는", "없는"}
     return Counter(token for token in tokens if token not in stopwords)
+
+
+def _focus_keyword(text: str) -> str:
+    hits: list[str] = []
+
+    for phrase in _FOCUS_PHRASES:
+        if phrase in text:
+            hits.append(phrase)
+
+    for match in _MODEL_PATTERN.finditer(text):
+        hits.append(match.group(1).strip())
+
+    for match in _NUMBER_CONTEXT_PATTERN.finditer(text):
+        hits.append(match.group(0).strip())
+
+    if not hits:
+        for token in _TOKEN_PATTERN.findall(text):
+            if token in _FOCUS_STOPWORDS:
+                continue
+            if len(token) < 2:
+                continue
+            hits.append(token)
+            if len(hits) >= 2:
+                break
+
+    deduped: list[str] = []
+    for hit in hits:
+        clean = re.sub(r"\s+", " ", hit).strip(" ,.;:!?")
+        if not clean:
+            continue
+        clean_lower = clean.lower()
+        existing_lowers = [item.lower() for item in deduped]
+        if any(clean_lower == existing for existing in existing_lowers):
+            continue
+        if any(clean_lower in existing for existing in existing_lowers):
+            continue
+        deduped = [
+            item
+            for item in deduped
+            if item.lower() not in clean_lower
+        ]
+        deduped.append(clean)
+
+    if not deduped:
+        return "최근 발화"
+
+    if len(deduped) >= 2:
+        combined = "·".join(deduped[:2])
+        if len(combined) <= 24:
+            return combined
+
+    return deduped[0][:24]
 
 
 class RealtimeTriggerEngine:
@@ -182,6 +333,21 @@ class RealtimeTriggerEngine:
             if event:
                 events.append(event)
 
+        if PARKING_LOT.panel_name in enabled_panels and self._should_capture_open_question(text):
+            event = self._cooldown_event(PARKING_LOT, text, "미해결 질문/확인 항목 감지", _importance(text, 2))
+            if event:
+                events.append(event)
+
+        if ACTION_CANDIDATE.panel_name in enabled_panels and self._should_capture_action(text):
+            event = self._cooldown_event(ACTION_CANDIDATE, text, "담당/기한/요청 신호 감지", _importance(text, 2))
+            if event:
+                events.append(event)
+
+        if CUSTOMER_PERSPECTIVE.panel_name in enabled_panels and self._should_add_customer_perspective(text):
+            event = self._cooldown_event(CUSTOMER_PERSPECTIVE, text, "고객/사용자 관점 신호 감지", _importance(text, 1))
+            if event:
+                events.append(event)
+
         events.sort(key=lambda item: {"HIGH": 0, "MED": 1, "LOW": 2}[item.priority])
         return events
 
@@ -198,6 +364,18 @@ class RealtimeTriggerEngine:
             return False
         common = _keywords_from_buffer(buffer).most_common(1)
         return bool(common and common[0][1] >= 3)
+
+    def _should_capture_open_question(self, text: str) -> bool:
+        return _contains_any(text, _OPEN_QUESTION_KEYWORDS)
+
+    def _should_capture_action(self, text: str) -> bool:
+        return _contains_any(text, _ACTION_KEYWORDS)
+
+    def _should_add_customer_perspective(self, text: str) -> bool:
+        has_customer_keyword = _contains_any(text, _CUSTOMER_KEYWORDS)
+        has_decision_keyword = _contains_any(text, _AGREEMENT_KEYWORDS)
+        has_product_keyword = _contains_any(text, ("기능", "서비스", "화면", "프로덕트", "경험"))
+        return has_customer_keyword or (has_decision_keyword and has_product_keyword)
 
     def _cooldown_event(
         self,
@@ -228,4 +406,5 @@ class RealtimeTriggerEngine:
             importance=importance,
             priority=config.priority,
             utterance=text,
+            focus_keyword=_focus_keyword(text),
         )
