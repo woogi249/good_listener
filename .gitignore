@@ -37,3 +37,12 @@ build/
 coverage/
 logs/
 *.log
+
+# Local meeting data and encryption material
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.glenc
+*.dpapi

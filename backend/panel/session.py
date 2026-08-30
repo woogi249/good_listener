@@ -7,6 +7,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
+from .budget import BudgetGate
 from .cli_dispatcher import call_claude_with_codex_fallback, enforce_one_line_50chars
 from .config import DEFAULT_BUFFER_SIZE, DEFAULT_CLI_TIMEOUT_S, REALTIME_PANELS, PRIMARY_PANELS
 from .exaone_dispatcher import call_exaone, call_exaone_ui_director, call_exaone_web_fact_check
@@ -149,12 +150,15 @@ class MeetingSession:
         cli_timeout_s: float = DEFAULT_CLI_TIMEOUT_S,
         mock_ai: bool = False,
         ai_provider: str = "exaone",
+        budget_gate: BudgetGate | None = None,
     ):
         self.buffer = RollingBuffer(maxlen=buffer_size)
         self.trigger_engine = RealtimeTriggerEngine()
         self.cli_timeout_s = cli_timeout_s
         self.mock_ai = mock_ai
-        self.ai_provider = self._normalize_ai_provider(ai_provider)
+        self.ai_provider = self._normalize_ai_provider("mock" if mock_ai else ai_provider)
+        self._default_ai_provider = self.ai_provider
+        self.budget_gate = budget_gate or BudgetGate()
         self.running = False
         self.mic_running = False
         self.context = MeetingContext()
@@ -228,7 +232,8 @@ class MeetingSession:
             self.layout = LayoutState(arbiter_enabled=True)
             self.layout.ggui_spec = self._local_layout_spec("normal", "")
             self.context = MeetingContext()
-            self.ai_provider = "exaone"
+            self.ai_provider = self._default_ai_provider
+            self.budget_gate.reset()
             self.enabled_panels = {
                 config.panel_name for config in REALTIME_PANELS if config.enabled
             }
@@ -271,6 +276,7 @@ class MeetingSession:
     def set_ai_provider(self, provider: str) -> dict:
         with self._lock:
             self.ai_provider = self._normalize_ai_provider(provider)
+            self._default_ai_provider = self.ai_provider
         return self.state()
 
     def set_layout_arbiter_enabled(self, enabled: bool) -> dict:
@@ -358,7 +364,7 @@ class MeetingSession:
             text = enforce_one_line_50chars(event.fixture_text)
             provider = "fixture"
             elapsed_s = max(0.0, delay_s)
-        elif self.mock_ai:
+        elif self.mock_ai or self.ai_provider == "mock":
             text = self._mock_panel_text(event)
             provider = "mock"
             elapsed_s = 0.0
@@ -369,12 +375,14 @@ class MeetingSession:
                     response = call_exaone_web_fact_check(
                         prompt,
                         timeout_s=self.cli_timeout_s,
+                        budget_gate=self.budget_gate,
                     )
                 else:
                     response = call_exaone(
                         event.panel_name,
                         prompt,
                         timeout_s=self.cli_timeout_s,
+                        budget_gate=self.budget_gate,
                     )
             else:
                 response = call_claude_with_codex_fallback(
@@ -438,6 +446,7 @@ class MeetingSession:
                 "panel_configs": self.panel_configs,
                 "transcript": [item.as_dict() for item in self.transcript[-40:]],
                 "context": self.context.as_dict(),
+                "budget": self.budget_gate.state(),
             }
 
     def _render_prompt(self, panel_name: str) -> str:
@@ -458,7 +467,9 @@ class MeetingSession:
     def _normalize_ai_provider(self, provider: str) -> str:
         if provider in {"exaone", "friendli"}:
             return "exaone"
-        return provider if provider == "cli" else "exaone"
+        if provider in {"cli", "mock"}:
+            return provider
+        return "exaone"
 
     def _primary_visual_spec(
         self,
@@ -570,6 +581,7 @@ class MeetingSession:
         response = call_exaone_ui_director(
             prompt,
             timeout_s=min(_UI_DIRECTOR_TIMEOUT_S, self.cli_timeout_s),
+            budget_gate=self.budget_gate,
         )
         if not response.success or not response.stdout:
             return

@@ -3,160 +3,343 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>good-listener</title>
-    <link rel="stylesheet" href="/static/styles.css?v=demo14" />
+    <meta name="color-scheme" content="light" />
+    <title>good-listener · 회의 보드</title>
+    <link rel="stylesheet" href="/static/styles.css?v=product-v1" />
   </head>
-  <body>
-    <header class="topbar">
-      <div class="brand">
-        <strong>good-listener</strong>
-        <span id="connection">연결 대기</span>
+  <body data-phase="setup">
+    <a class="skip-link" href="#mainContent">본문으로 건너뛰기</a>
+
+    <header class="app-header" aria-label="회의 제어">
+      <div class="brand-block">
+        <a class="brand-mark" href="/" aria-label="good-listener 홈">GL</a>
+        <div class="brand-copy">
+          <strong>good-listener</strong>
+          <span id="meetingTitleHeader">새 회의</span>
+        </div>
       </div>
-      <div class="controls">
-        <button id="startBtn" type="button">시작</button>
-        <button id="stopBtn" type="button">종료</button>
-        <button id="demoBtn" type="button">데모</button>
-        <button id="pauseDemoBtn" type="button">일시정지</button>
-        <button id="resumeDemoBtn" type="button">재개</button>
-        <button id="stopDemoBtn" type="button">데모 중지</button>
-        <select id="demoMode" aria-label="데모 분석 모드">
-          <option value="fixture">고정 응답</option>
-          <option value="exaone">실제 EXAONE API</option>
-          <option value="cli">실제 CLI</option>
-        </select>
-        <select id="analysisProvider" aria-label="실제 분석 provider">
-          <option value="exaone">분석: EXAONE API</option>
-          <option value="cli">분석: CLI</option>
-        </select>
-        <button id="micBtn" type="button">마이크</button>
-        <button id="sampleBtn" type="button">샘플</button>
-        <button id="resetBtn" type="button">초기화</button>
+
+      <div class="meeting-clock" aria-label="회의 경과 시간">
+        <span>경과 시간</span>
+        <time id="meetingTimer" datetime="PT0S">00:00:00</time>
+      </div>
+
+      <div class="health-strip" aria-label="시스템 상태">
+        <span class="health-pill" id="appConnectionPill" data-status="pending">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="appConnectionText">서버 확인 중</span>
+        </span>
+        <span class="health-pill" id="micStatePill" data-status="idle">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="micStateText">마이크 대기</span>
+        </span>
+        <span class="health-pill" id="analysisStatePill" data-status="idle">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="analysisStateText">분석 대기</span>
+        </span>
+      </div>
+
+      <div class="header-actions">
+        <button class="button button-primary" id="startBtn" type="button">회의 시작</button>
+        <button class="button button-secondary" id="pauseBtn" type="button" hidden>일시정지</button>
+        <button class="button button-danger" id="stopBtn" type="button" hidden>종료</button>
+        <button class="icon-button" id="transcriptBtn" type="button" aria-haspopup="dialog" aria-controls="transcriptDrawer" hidden>
+          <span aria-hidden="true">≡</span>
+          <span>전체 자막</span>
+        </button>
       </div>
     </header>
 
-    <main class="workspace" aria-label="실시간 회의 패널">
-      <article class="panel panel-summary primary-panel" id="panel-summarizer" data-importance="1">
-        <div class="panel-head">
-          <div>
-            <span class="panel-key">A</span>
-            <h2>요약</h2>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" data-panel-toggle="summarizer" checked />
-            <span>ON</span>
-          </label>
-        </div>
-        <p class="panel-text">요약 대기</p>
-        <ol class="panel-sources" data-role="sources"></ol>
-        <div class="panel-meta">
-          <span data-role="reason">최근 흐름</span>
-          <span data-role="provider"></span>
-        </div>
-      </article>
+    <div class="system-banner" id="systemBanner" role="status" aria-live="polite" hidden>
+      <div>
+        <strong id="systemBannerTitle"></strong>
+        <span id="systemBannerMessage"></span>
+      </div>
+      <button class="button button-quiet" id="systemBannerAction" type="button" hidden>다시 시도</button>
+    </div>
 
-      <article class="panel panel-fact primary-panel" id="panel-fact_checker" data-importance="1">
-        <div class="panel-head">
-          <div>
-            <span class="panel-key">B</span>
-            <h2>팩트체크</h2>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" data-panel-toggle="fact_checker" checked />
-            <span>ON</span>
-          </label>
+    <main id="mainContent">
+      <section class="setup-view" id="setupView" aria-labelledby="setupTitle">
+        <div class="setup-intro">
+          <span class="eyebrow">회의 접근성 코파일럿</span>
+          <h1 id="setupTitle">듣고, 확인하고,<br />남겨야 할 것을 정리합니다.</h1>
+          <p>
+            실시간 자막은 바로 보여주고, 현재 논의와 팩트 확인은 조용히 비동기로 정리합니다.
+            종료 후에는 근거가 연결된 회의록 초안을 제공합니다.
+          </p>
+          <ul class="setup-benefits" aria-label="주요 기능">
+            <li><span aria-hidden="true">01</span> 확정 전사와 중간 자막 분리</li>
+            <li><span aria-hidden="true">02</span> 발화 수집을 막지 않는 팩트 검색</li>
+            <li><span aria-hidden="true">03</span> 결정·할 일·미결 사항 회의록</li>
+          </ul>
         </div>
-        <p class="panel-text">검증 주장 대기</p>
-        <ol class="panel-sources" data-role="sources"></ol>
-        <div class="panel-meta">
-          <span data-role="reason">수치·고유명사</span>
-          <span data-role="provider"></span>
-        </div>
-      </article>
 
-      <section class="timeline-panel" aria-label="인사이트 타임라인">
-        <div class="timeline-head">
-          <div>
-            <span class="panel-key">C+</span>
-            <h2>인사이트 타임라인</h2>
+        <form class="setup-card" id="setupForm">
+          <div class="setup-card-head">
+            <div>
+              <span class="eyebrow">회의 준비</span>
+              <h2>시작 전 정보를 확인하세요</h2>
+            </div>
+            <span class="setup-step">약 1분</span>
           </div>
-          <div class="timeline-tools">
-            <label class="feed-toggle arbiter-toggle">
-              <input type="checkbox" id="layoutArbiterToggle" checked />
-              <span>위험 강조</span>
-            </label>
-            <span class="status-line" id="statusLine">대기 중</span>
+
+          <label class="field">
+            <span>회의명 <small>필수</small></span>
+            <input id="meetingTopic" name="topic" type="text" maxlength="120" autocomplete="off" placeholder="예: 3분기 제품 출시 점검" required />
+          </label>
+          <label class="field">
+            <span>회의 목표 <small>선택</small></span>
+            <textarea id="meetingGoal" name="goal" rows="2" maxlength="500" placeholder="예: 출시 범위와 담당자를 확정합니다"></textarea>
+          </label>
+          <label class="field">
+            <span>주요 용어·이름 <small>선택, 쉼표로 구분</small></span>
+            <textarea id="meetingTerms" name="terms" rows="2" maxlength="1000" placeholder="예: good-listener, Realtime API, 김민지"></textarea>
+          </label>
+
+          <fieldset class="device-fieldset">
+            <legend>마이크</legend>
+            <div class="device-row">
+              <select id="audioDevice" aria-label="마이크 선택">
+                <option value="">기본 마이크</option>
+              </select>
+              <button class="button button-secondary" id="micTestBtn" type="button" disabled>권한·입력 확인</button>
+            </div>
+            <div class="mic-meter" aria-hidden="true">
+              <span id="micMeterBar"></span>
+            </div>
+            <p class="field-help" id="micTestStatus">회의 시작 전에 브라우저의 마이크 권한을 확인합니다.</p>
+          </fieldset>
+
+          <label class="consent-check">
+            <input id="consentCheck" type="checkbox" required />
+            <span>참석자에게 OpenAI API 처리, 이 회의실 PC의 자동 만료 없는 보존, OpenAI 측 모니터링 데이터가 조직 설정에 따라 통상 최대 30일 보관되며 예외 시 더 길 수 있음을 안내했고 동의를 확인했습니다.</span>
+          </label>
+
+          <button class="button button-primary button-large" id="setupStartBtn" type="submit">회의 시작</button>
+          <p class="privacy-note">음성·자막·회의록은 이 회의실 PC에 자동 만료 없이 보존되며 회의별로 영구 삭제할 수 있습니다. 연결 전 음성은 브라우저에 임시 보관됩니다. OpenAI의 abuse-monitoring 데이터는 조직 설정에 따라 통상 최대 30일 보관되며 법적·안전상 예외에는 더 길 수 있습니다. 일반 API 키는 이 PC의 서버에만 보관됩니다.</p>
+        </form>
+      </section>
+
+      <section class="meeting-view" id="meetingView" aria-label="실시간 회의 보드" hidden>
+        <section class="caption-band" aria-labelledby="captionTitle">
+          <div class="caption-head">
+            <div>
+              <span class="eyebrow" id="captionTitle">실시간 자막</span>
+              <span class="caption-state" id="captionState">듣는 중</span>
+            </div>
+            <span class="caption-hint">중간 자막은 흐리게 표시됩니다</span>
           </div>
-        </div>
-        <div class="feed-toggles" aria-label="타임라인 패널 토글">
-          <label class="feed-toggle feed-ideator">
-            <input type="checkbox" data-panel-toggle="ideator" checked />
-            <span>C 아이디어</span>
-          </label>
-          <label class="feed-toggle feed-devils_advocate">
-            <input type="checkbox" data-panel-toggle="devils_advocate" checked />
-            <span>D 반박</span>
-          </label>
-          <label class="feed-toggle feed-parking_lot">
-            <input type="checkbox" data-panel-toggle="parking_lot" checked />
-            <span>E 미해결</span>
-          </label>
-          <label class="feed-toggle feed-action_candidate">
-            <input type="checkbox" data-panel-toggle="action_candidate" checked />
-            <span>TODO</span>
-          </label>
-          <label class="feed-toggle feed-customer_perspective">
-            <input type="checkbox" data-panel-toggle="customer_perspective" checked />
-            <span>고객관점</span>
-          </label>
-        </div>
-        <div class="insight-feed-viewport" id="insightFeedViewport">
-          <ol class="insight-feed" id="insightFeed">
-            <li class="feed-empty">인사이트 대기</li>
+          <ol class="caption-finals" id="captionFinals">
+            <li class="empty-line">확정된 발화를 기다리고 있습니다.</li>
           </ol>
+          <p class="caption-partial" id="captionPartial" aria-live="off"></p>
+          <p class="sr-only" id="captionAnnouncement" aria-live="polite" aria-atomic="true"></p>
+        </section>
+
+        <div class="board-grid">
+          <article class="board-card progress-card" id="progressPanel" aria-labelledby="progressTitle">
+            <header class="card-head">
+              <div>
+                <span class="card-kicker">MEETING FLOW</span>
+                <h2 id="progressTitle">현재 진행</h2>
+              </div>
+              <span class="quiet-state" id="progressUpdating" hidden>업데이트 중</span>
+            </header>
+            <div class="current-topic">
+              <span>현재 안건</span>
+              <strong id="currentTopic">논의가 시작되면 현재 안건을 표시합니다.</strong>
+            </div>
+            <p class="current-summary" id="currentSummary">아직 확정된 요약이 없습니다.</p>
+            <ol class="agenda-list" id="agendaList">
+              <li class="empty-row">진행 상태를 정리하고 있습니다.</li>
+            </ol>
+            <footer class="card-footer">
+              <span id="progressUpdatedAt">업데이트 대기</span>
+              <button class="text-button" id="progressEvidenceBtn" type="button" hidden>근거 발화 보기</button>
+            </footer>
+          </article>
+
+          <article class="board-card fact-card" id="factPanel" aria-labelledby="factTitle">
+            <header class="card-head">
+              <div>
+                <span class="card-kicker">FACT LEDGER</span>
+                <h2 id="factTitle">팩트 확인</h2>
+              </div>
+              <span class="count-badge" id="factPendingCount">대기 0</span>
+            </header>
+            <div class="fact-summary" aria-label="팩트 확인 집계">
+              <span><strong id="factVerifiedCount">0</strong> 확인</span>
+              <span><strong id="factContradictedCount">0</strong> 반박</span>
+              <span><strong id="factInconclusiveCount">0</strong> 추가 확인</span>
+            </div>
+            <div class="ledger-viewport" id="factViewport">
+              <ol class="fact-list" id="factList">
+                <li class="empty-row">검증할 주장을 기다리고 있습니다.</li>
+              </ol>
+            </div>
+            <button class="new-items-button" id="newFactsBtn" type="button" hidden>새 팩트 0개</button>
+          </article>
+        </div>
+
+        <nav class="meeting-ledger" aria-label="회의 결과 요약">
+          <button class="ledger-button" type="button" data-drawer="decisions" aria-haspopup="dialog" aria-expanded="false">
+            <span>결정</span><strong id="decisionCount">0</strong>
+          </button>
+          <button class="ledger-button" type="button" data-drawer="actions" aria-haspopup="dialog" aria-expanded="false">
+            <span>할 일</span><strong id="actionCount">0</strong>
+          </button>
+          <button class="ledger-button" type="button" data-drawer="open_questions" aria-haspopup="dialog" aria-expanded="false">
+            <span>미결</span><strong id="openQuestionCount">0</strong>
+          </button>
+          <button class="ledger-button ledger-button-ai" type="button" data-drawer="suggestions" aria-haspopup="dialog" aria-expanded="false">
+            <span>AI 제안</span><strong id="suggestionCount">0</strong>
+          </button>
+        </nav>
+      </section>
+
+      <section class="finalizing-view" id="finalizingView" aria-labelledby="finalizingTitle" hidden>
+        <div class="finalizing-card">
+          <span class="finalizing-orbit" aria-hidden="true"></span>
+          <span class="eyebrow">회의 마무리</span>
+          <h1 id="finalizingTitle">근거가 연결된 회의록을 만들고 있습니다</h1>
+          <p id="finalizingMessage">마지막 음성과 전사 결과를 안전하게 정리합니다.</p>
+          <ol class="finalization-steps" id="finalizationSteps">
+            <li data-step="audio" data-status="active"><span>1</span> 남은 음성 저장</li>
+            <li data-step="transcript" data-status="pending"><span>2</span> 확정 자막 정리</li>
+            <li data-step="facts" data-status="pending"><span>3</span> 팩트 확인 마무리</li>
+            <li data-step="minutes" data-status="pending"><span>4</span> 회의록 초안 작성</li>
+          </ol>
+          <p class="field-help">이 화면을 닫아도 서버에 저장된 회의는 유지됩니다.</p>
+        </div>
+      </section>
+
+      <section class="minutes-view" id="minutesView" aria-labelledby="minutesTitle" hidden>
+        <header class="minutes-hero">
+          <div>
+            <span class="eyebrow" id="minutesPhaseLabel">회의록 검토</span>
+            <h1 id="minutesTitle">회의록 초안</h1>
+            <p id="minutesMeta"></p>
+          </div>
+          <div class="minutes-actions">
+            <button class="button button-secondary" id="saveMinutesBtn" type="button">수정 저장</button>
+            <button class="button button-primary" id="approveMinutesBtn" type="button">회의록 확정</button>
+            <button class="button button-secondary" id="downloadMinutesBtn" type="button">Markdown</button>
+            <button class="button button-secondary" id="printMinutesBtn" type="button">인쇄·PDF</button>
+          </div>
+        </header>
+
+        <div class="minutes-layout">
+          <article class="minutes-editor-card">
+            <label class="field" for="minutesMarkdown">
+              <span>회의록 내용</span>
+              <textarea id="minutesMarkdown" rows="28" spellcheck="true"></textarea>
+            </label>
+            <pre class="minutes-print-content" id="minutesPrintContent" aria-hidden="true"></pre>
+          </article>
+          <aside class="minutes-review-card">
+            <section>
+              <div class="review-head">
+                <h2>화자 이름</h2>
+                <span id="speakerCount">0명</span>
+              </div>
+              <div class="speaker-list" id="speakerList">
+                <p class="empty-row">화자 정보가 없습니다.</p>
+              </div>
+            </section>
+            <section>
+              <div class="review-head">
+                <h2>확인 필요</h2>
+                <span id="reviewIssueCount">0건</span>
+              </div>
+              <ul class="review-issues" id="reviewIssueList">
+                <li class="empty-row">확인이 필요한 항목이 없습니다.</li>
+              </ul>
+            </section>
+            <button class="button button-danger-outline" id="deleteMeetingBtn" type="button">이 회의 영구 삭제</button>
+          </aside>
         </div>
       </section>
     </main>
 
-    <details class="operator-dock">
-      <summary>입력 · 로그</summary>
-      <div class="dock-content">
-        <form id="prepForm" class="prep-form">
-          <label>
-            <span>주제</span>
-            <input id="prepTopic" type="text" placeholder="예: AI 모델 업데이트 기획" />
-          </label>
-          <label>
-            <span>목표</span>
-            <input id="prepGoal" type="text" placeholder="예: 확인할 이슈와 아이템 정리" />
-          </label>
-          <label>
-            <span>용어</span>
-            <textarea id="prepTerms" rows="3" placeholder="Codex 5.5, Claude Opus 4.7, OpenAI, Spark"></textarea>
-          </label>
-          <button type="submit">준비</button>
-        </form>
-        <div class="context-pill" id="contextPill">준비 문맥 없음</div>
-        <form id="utteranceForm" class="utterance-form">
-          <textarea id="utteranceInput" rows="4" placeholder="발화를 입력"></textarea>
-          <button type="submit">보내기</button>
-        </form>
-        <ol class="transcript" id="transcript"></ol>
+    <aside class="side-drawer" id="insightDrawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <div class="drawer-sheet" tabindex="-1">
+        <header class="drawer-head">
+          <div>
+            <span class="eyebrow">회의 중 수집</span>
+            <h2 id="drawerTitle">결정</h2>
+          </div>
+          <button class="icon-close" type="button" data-close-drawer aria-label="서랍 닫기">×</button>
+        </header>
+        <ol class="drawer-list" id="drawerList"></ol>
+      </div>
+    </aside>
+
+    <aside class="side-drawer" id="transcriptDrawer" role="dialog" aria-modal="true" aria-labelledby="transcriptDrawerTitle" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-transcript></div>
+      <div class="drawer-sheet transcript-sheet" tabindex="-1">
+        <header class="drawer-head">
+          <div>
+            <span class="eyebrow">원문</span>
+            <h2 id="transcriptDrawerTitle">전체 자막</h2>
+          </div>
+          <button class="icon-close" type="button" data-close-transcript aria-label="전체 자막 닫기">×</button>
+        </header>
+        <ol class="transcript-list" id="transcriptList">
+          <li class="empty-row">확정된 자막이 없습니다.</li>
+        </ol>
+        <button class="new-items-button" id="newTranscriptBtn" type="button" hidden>새 자막 0개</button>
+      </div>
+    </aside>
+
+    <dialog class="confirm-dialog" id="stopDialog" aria-labelledby="stopDialogTitle">
+      <form method="dialog">
+        <span class="dialog-icon" aria-hidden="true">✓</span>
+        <h2 id="stopDialogTitle">회의를 종료하고 정리할까요?</h2>
+        <p>새 발화 수집을 멈춘 뒤 남은 전사와 팩트 확인을 마무리하고 회의록 초안을 만듭니다.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" value="cancel">회의 계속</button>
+          <button class="button button-danger" id="confirmStopBtn" value="confirm">종료 및 정리</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteDialog" aria-labelledby="deleteDialogTitle">
+      <form method="dialog">
+        <span class="dialog-icon dialog-icon-danger" aria-hidden="true">!</span>
+        <h2 id="deleteDialogTitle">이 회의를 영구 삭제할까요?</h2>
+        <p>음성, 자막, 팩트 검색 결과와 회의록을 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.</p>
+        <label class="field">
+          <span>확인을 위해 <strong>삭제</strong>를 입력하세요</span>
+          <input id="deleteConfirmInput" type="text" autocomplete="off" />
+        </label>
+        <div class="dialog-actions">
+          <button class="button button-secondary" value="cancel">취소</button>
+          <button class="button button-danger" id="confirmDeleteBtn" value="confirm" disabled>영구 삭제</button>
+        </div>
+      </form>
+    </dialog>
+
+    <details class="developer-tools" id="developerTools" hidden>
+      <summary>개발자 도구</summary>
+      <div class="developer-grid">
+        <span id="connection">연결 대기</span>
+        <span id="preflightPill">점검 대기</span>
+        <span id="budgetPill">예산 대기</span>
+        <select id="demoMode" aria-label="데모 모드"><option value="fixture">고정 응답</option></select>
+        <button id="demoBtn" type="button">데모</button>
+        <button id="pauseDemoBtn" type="button">데모 일시정지</button>
+        <button id="resumeDemoBtn" type="button">데모 재개</button>
+        <button id="stopDemoBtn" type="button">데모 중지</button>
+        <button id="sampleBtn" type="button">샘플</button>
+        <button id="resetBtn" type="button">초기화</button>
+        <button id="micBtn" type="button">마이크</button>
+        <span id="statusLine">대기 중</span>
       </div>
     </details>
 
-    <aside class="conversation-popover" id="conversationPopup" data-active="false" aria-live="polite">
-      <p id="conversationText"></p>
-    </aside>
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
 
-    <aside class="feed-detail" id="feedDetail" data-active="false" aria-hidden="true" aria-live="polite" aria-label="인사이트 상세">
-      <button class="feed-detail-close" id="feedDetailClose" type="button" aria-label="상세 닫기">×</button>
-      <div class="feed-detail-kicker" id="feedDetailKicker"></div>
-      <h3 id="feedDetailTitle"></h3>
-      <p id="feedDetailBody"></p>
-      <ul id="feedDetailPoints"></ul>
-      <div class="feed-detail-action" id="feedDetailAction"></div>
-    </aside>
-
-    <script src="/static/app.js?v=demo14"></script>
+    <script src="/static/app.js?v=product-v1" type="module"></script>
   </body>
 </html>

@@ -9,6 +9,7 @@ from html import unescape
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
+from .budget import BudgetGate
 from .cli_dispatcher import ClaudeResponse
 
 
@@ -131,10 +132,16 @@ def _api_key() -> str | None:
     )
 
 
+def has_exaone_api_key() -> bool:
+    _load_dotenv()
+    return bool(_api_key())
+
+
 def call_exaone(
     panel_name: str,
     prompt: str,
     timeout_s: float = 15.0,
+    budget_gate: BudgetGate | None = None,
 ) -> ClaudeResponse:
     start = time.perf_counter()
     _load_dotenv()
@@ -183,8 +190,12 @@ def call_exaone(
         enable_thinking=True,
         provider="exaone",
         start=start,
+        budget_gate=budget_gate,
+        budget_feature=f"{panel_name}:thinking",
     )
     if not response.success:
+        if response.stdout.startswith("예산초과:"):
+            return response
         fallback = _create_chat_completion(
             client=client,
             messages=messages,
@@ -192,6 +203,8 @@ def call_exaone(
             enable_thinking=False,
             provider="exaone:fast-fallback",
             start=start,
+            budget_gate=budget_gate,
+            budget_feature=f"{panel_name}:fast-fallback",
         )
         if fallback.success:
             fallback.fallback_from = response.error or "exaone thinking response failed"
@@ -208,6 +221,7 @@ def call_exaone(
 def call_exaone_web_fact_check(
     prompt: str,
     timeout_s: float = 15.0,
+    budget_gate: BudgetGate | None = None,
 ) -> ClaudeResponse:
     start = time.perf_counter()
     claim = _extract_latest_claim(prompt)
@@ -278,6 +292,8 @@ def call_exaone_web_fact_check(
         enable_thinking=False,
         provider="exaone+web",
         start=start,
+        budget_gate=budget_gate,
+        budget_feature="fact_checker:web",
     )
     response.sources = sources
     if response.success:
@@ -292,6 +308,7 @@ def call_exaone_web_fact_check(
 def call_exaone_ui_director(
     prompt: str,
     timeout_s: float = 8.0,
+    budget_gate: BudgetGate | None = None,
 ) -> ClaudeResponse:
     start = time.perf_counter()
     _load_dotenv()
@@ -347,6 +364,8 @@ def call_exaone_ui_director(
         enable_thinking=False,
         provider="exaone:ui-director",
         start=start,
+        budget_gate=budget_gate,
+        budget_feature="ui_director",
     )
     if not response.success:
         return response
@@ -370,7 +389,24 @@ def _create_chat_completion(
     enable_thinking: bool,
     provider: str,
     start: float,
+    budget_gate: BudgetGate | None = None,
+    budget_feature: str = "exaone",
 ) -> ClaudeResponse:
+    reservation = None
+    if budget_gate is not None:
+        decision = budget_gate.reserve_messages(messages, feature=budget_feature)
+        if not decision.allowed:
+            return ClaudeResponse(
+                success=False,
+                stdout="예산초과: 분석 생략",
+                stderr="",
+                elapsed_s=time.perf_counter() - start,
+                error=decision.reason,
+                provider=provider,
+                budget=budget_gate.state(),
+            )
+        reservation = decision.reservation
+
     try:
         completion = client.chat.completions.create(
             model=EXAONE_MODEL,
@@ -393,10 +429,14 @@ def _create_chat_completion(
             elapsed_s=time.perf_counter() - start,
             error=f"{type(exc).__name__}: {exc}",
             provider=provider,
+            budget=budget_gate.state() if budget_gate is not None else None,
         )
 
     message = completion.choices[0].message if completion.choices else None
     content = (getattr(message, "content", "") or "").strip()
+    usage = _usage_dict(getattr(completion, "usage", None))
+    if budget_gate is not None:
+        budget_gate.settle(reservation, usage)
     return ClaudeResponse(
         success=bool(content),
         stdout=content,
@@ -404,7 +444,25 @@ def _create_chat_completion(
         elapsed_s=time.perf_counter() - start,
         error=None if content else "empty response",
         provider=provider,
+        usage=usage,
+        budget=budget_gate.state() if budget_gate is not None else None,
     )
+
+
+def _usage_dict(usage: object) -> dict[str, int] | None:
+    if usage is None:
+        return None
+    values: dict[str, int] = {}
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        value = getattr(usage, key, None)
+        if value is None and isinstance(usage, dict):
+            value = usage.get(key)
+        if value is not None:
+            try:
+                values[key] = int(value)
+            except (TypeError, ValueError):
+                pass
+    return values or None
 
 
 def _extract_latest_claim(prompt: str) -> str:

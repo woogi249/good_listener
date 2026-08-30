@@ -106,7 +106,7 @@ def test_prepare_context_is_in_state_and_prompt():
 def test_session_uses_exaone_provider(monkeypatch):
     called = {}
 
-    def fake_web_fact_check(prompt, timeout_s):
+    def fake_web_fact_check(prompt, timeout_s, budget_gate=None):
         called["panel_name"] = "fact_checker"
         called["prompt"] = prompt
         called["timeout_s"] = timeout_s
@@ -150,7 +150,7 @@ def test_session_uses_exaone_provider(monkeypatch):
 
 
 def test_failed_exaone_fact_check_keeps_fallback_text(monkeypatch):
-    def fake_web_fact_check(prompt, timeout_s):
+    def fake_web_fact_check(prompt, timeout_s, budget_gate=None):
         return ClaudeResponse(
             success=False,
             stdout="근거부족: 검색 출처를 찾지 못함",
@@ -187,7 +187,7 @@ def test_failed_exaone_fact_check_keeps_fallback_text(monkeypatch):
 
 
 def test_exaone_ui_director_updates_layout_and_panel_visuals(monkeypatch):
-    def fake_exaone(panel_name, prompt, timeout_s):
+    def fake_exaone(panel_name, prompt, timeout_s, budget_gate=None):
         return ClaudeResponse(
             success=True,
             stdout="금리 리스크 중심 논의",
@@ -196,7 +196,7 @@ def test_exaone_ui_director_updates_layout_and_panel_visuals(monkeypatch):
             provider="exaone",
         )
 
-    def fake_ui_director(prompt, timeout_s):
+    def fake_ui_director(prompt, timeout_s, budget_gate=None):
         return ClaudeResponse(
             success=True,
             stdout=json.dumps({
@@ -254,9 +254,30 @@ def test_ai_provider_is_exposed_in_state():
 
     assert session.state()["ai_provider"] == "exaone"
 
+    session.set_ai_provider("mock")
+
+    assert session.state()["ai_provider"] == "mock"
+
     session.set_ai_provider("unknown")
 
     assert session.state()["ai_provider"] == "exaone"
+
+
+def test_mock_provider_uses_local_mock_without_budget_spend():
+    session = MeetingSession(mock_ai=False, ai_provider="mock")
+    event = TriggerEvent(
+        panel_name="fact_checker",
+        reason="수치/고유명사/검증 주장 감지",
+        importance=2,
+        priority="HIGH",
+        utterance="비용이 30만 원입니다",
+    )
+
+    output = session.run_panel(event)
+
+    assert output.provider == "mock"
+    assert output.text
+    assert session.state()["budget"]["call_count"] == 0
 
 
 def test_layout_arbiter_expands_on_risk_and_can_be_disabled():
@@ -296,7 +317,7 @@ def test_reset_returns_session_to_initial_ready_state():
 
     assert state["running"] is False
     assert state["mic_running"] is False
-    assert state["ai_provider"] == "exaone"
+    assert state["ai_provider"] == "mock"
     assert state["context"] == {"topic": "", "goal": "", "terms": []}
     assert state["transcript"] == []
     assert state["feed"] == []

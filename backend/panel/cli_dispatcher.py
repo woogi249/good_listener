@@ -24,6 +24,8 @@ class ClaudeResponse:
     provider: str = "claude"
     fallback_from: str | None = None
     sources: list[dict] | None = None
+    usage: dict[str, int] | None = None
+    budget: dict | None = None
 
 
 def _resolve_command(name: str) -> str:

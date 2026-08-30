@@ -2,6 +2,7 @@ import sys
 import json
 from types import SimpleNamespace
 
+from panel.budget import BudgetConfig, BudgetGate
 from panel import exaone_dispatcher as exaone
 
 
@@ -80,6 +81,36 @@ def test_exaone_fast_fallback_when_thinking_has_empty_content(monkeypatch):
     assert calls[0]["extra_body"]["include_reasoning"] is False
     assert calls[1]["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
     assert calls[0]["model"] == exaone.EXAONE_MODEL
+
+
+def test_exaone_budget_gate_blocks_before_api_call(monkeypatch):
+    calls = []
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            raise AssertionError("API call should be blocked by budget gate")
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs):
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+    gate = BudgetGate(BudgetConfig(max_budget_krw=1.0, min_estimated_call_krw=2.0))
+    monkeypatch.setattr(exaone, "_load_dotenv", lambda: None)
+    monkeypatch.setenv("EXAONE_API_KEY", "test-key")
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
+
+    response = exaone.call_exaone(
+        "summarizer",
+        "## 최근 발화\n- 비용 초과 확인",
+        timeout_s=10,
+        budget_gate=gate,
+    )
+
+    assert response.success is False
+    assert response.stdout == "예산초과: 분석 생략"
+    assert calls == []
+    assert gate.state()["blocked_count"] == 1
 
 
 def test_parse_duckduckgo_results_decodes_sources():
